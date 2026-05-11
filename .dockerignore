@@ -1,0 +1,24 @@
+# deps & build
+node_modules
+.pnpm-store
+.next
+out
+
+# env & secrets (set via Render / compose env)
+.env
+.env.*
+!.env.example
+
+# dev
+.git
+.gitignore
+*.md
+.vscode
+.cursor
+
+# prisma local
+prisma/*.db
+
+# logs / OS
+npm-debug.log*
+.DS_Store

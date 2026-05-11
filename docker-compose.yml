@@ -1,0 +1,71 @@
+# Stack locale TEST : 3 containers (reverse proxy → app Next + PostgreSQL)
+# Usage depuis la racine du repo :
+#   docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: luna-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: luna
+      POSTGRES_PASSWORD: lunatest
+      POSTGRES_DB: luna_test
+    ports:
+      - "54322:5432"
+    volumes:
+      - luna_pg_data_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U luna -d luna_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        AUTH_SECRET: ${AUTH_SECRET}
+    container_name: luna-web-test
+    restart: unless-stopped
+    env_file:
+      # cp .env.docker.example .env.docker — ne pas commit (.gitignore).
+      - .env.docker
+    environment:
+      # Base dédiée TEST uniquement — ne réutiliser jamais en preprod/main
+      DATABASE_URL: postgresql://luna:lunatest@db:5432/luna_test?schema=public
+      AUTH_TRUST_HOST: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/',(r)=>process.exit(r.statusCode&&r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: luna-gateway-test
+    restart: unless-stopped
+    # 127.0.0.1 évite souvent les soucis IPv6 / localhost sous Windows.
+    ports:
+      - "127.0.0.1:3080:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  luna_pg_data_test:

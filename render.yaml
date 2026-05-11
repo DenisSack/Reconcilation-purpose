@@ -1,0 +1,26 @@
+# Blueprint Render — branche `test`.
+# Dans le dashboard Render : liez Postgres TEST et définissez DATABASE_URL pour ce service.
+# Ne réutilisez pas les mêmes secrets / DB_URL que preprod ou main.
+
+services:
+  - type: web
+    name: luna-web-test
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: test
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        sync: false

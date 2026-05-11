@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  username        String    @unique
+  password        String
+  mustChangePassword Boolean @default(false)
+  role            Role      @default(USER)
+  canAccessStatus Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  services        UserService[]
+  reconciliations Reconciliation[]
+  auditLogs       AuditLog[]
+}
+
+model Service {
+  id                String    @id @default(cuid())
+  name              String
+  description       String?
+  lastReconciled    DateTime?
+  createdAt         DateTime  @default(now())
+  users             UserService[]
+  reconciliations   Reconciliation[]
+}
+
+model UserService {
+  userId    String
+  serviceId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, serviceId])
+}
+
+model Reconciliation {
+  id            String    @id @default(cuid())
+  userId        String
+  serviceId     String
+  supplierCount Int       @default(0)
+  systemCount   Int       @default(0)
+  totalSupplier Float
+  totalSystem   Float
+  difference    Float
+  discrepancies Json
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id])
+  service       Service   @relation(fields: [serviceId], references: [id])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String
+  action    AuditAction
+  details   Json?
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  SERVICE_CREATED
+  SERVICE_UPDATED
+  SERVICE_DELETED
+}
